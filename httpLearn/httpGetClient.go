@@ -28,6 +28,3 @@ func main() {
 	fmt.Printf("%s", result)
 }
 
-func hello() {
-	fmt.Println("hello");
-}
