@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 )
 
 /**
@@ -21,85 +22,122 @@ import (
 根据输入，重新排列数组，然后将符合条件的数组编码为 JSON 输出（不要有空格），如：[[7,0],[4,4],[7,1],[5,0],[6,1],[5,2]]。
  */
 func main() {
-	fmt.Println(helpLineUp("[[7,0],[4,4],[7,1],[5,0],[6,1],[5,2]]"))
+	fmt.Println(helpLineUp("[[7,0],[4,4],[7,1],[5,0],[6,1],[5,2],[4,5],[6,2],[7,2]]"))
+	//helpLineUp("[[7,0],[4,4],[7,1],[5,0],[6,1],[5,2],[4,5]]")
 }
+
+type Student struct {
+	height int `身高`
+	numbefore int `前面对自己高的人数`
+}
+func (s Student) String() string{
+	return fmt.Sprintf("[%d,%d]", s.height, s.numbefore)
+}
+
+type StundetList []Student
+func (list StundetList) Len() int{
+	return len(list)
+}
+func (list StundetList) Less(i,j int) bool{
+	ires := list[i].height + list[i].numbefore
+	jres := list[j].height + list[j].numbefore
+	if ires < jres {
+		return  true
+	}else{
+		return false
+	}
+}
+func (list StundetList) Swap(i,j int) {
+	var temp = list[i]
+	list[i] = list[j]
+	list[j] = temp
+}
+
+
 
 
 func helpLineUp(line string) string{
 	var numArr [][2]int
 	json.Unmarshal([]byte(line), &numArr)
+	var list StundetList
+	for _,value := range numArr {
+		list = append(list,Student{value[0],value[1]})
+	}
+	sort.Sort(list)
 
-	var tempMap = make(map[int][][2]int, 10)
+	var resQuen =[]int{0}
+	resQuen = findResult(resQuen, list, 1)
 
-	var minSum,maxSum int
-	minSum = numArr[0][0]+numArr[0][1]
-	maxSum = minSum
-	for _,arrValue := range numArr {
-		var sum = arrValue[0]+arrValue[1]
-		if sum > maxSum {
-			maxSum = sum
-		}else if ( sum < minSum ) {
-			minSum = sum
-		}
-
-		tempMap[sum] = append(tempMap[sum], arrValue)
+	var sortSet [][2]int
+	for _,value := range resQuen {
+		sortSet = append(sortSet, [2]int{list[value].height,list[value].numbefore})
 	}
 
-	var resultArr [][2]int
-	var index int
-	var studentBefore = make(map[int]int,10)
-	var tempRes [][2]int
-	for index=minSum; index<=maxSum; index++ {
-		if value,ok := tempMap[index];ok{
-			tempRes = sortSameSum(value,studentBefore)
-			resultArr = append(resultArr,tempRes...)
-		}
-	}
-	bytes,_ := json.Marshal(resultArr)
-	return string(bytes)
+	ret,_ := json.Marshal(sortSet)
+	return string(ret)
 }
 
-
-func sortSameSum(inputArr [][2]int,studentBefore map[int]int) ([][2]int) {
-	var result [][2]int
-	var tempMap map[int][2]int = make(map[int][2]int,10)
-	var minHeight,maxHeight,index int
-	minHeight = inputArr[0][0]
-	maxHeight = minHeight
-	for _,value := range inputArr {
-		if ( value[0] > maxHeight ) {
-			maxHeight = value[0]
-		}else if( value[0] < minHeight ) {
-			minHeight = value[0]
-		}
-
-		tempMap[value[0]] = value
+func findResult(quen []int,list StundetList,startIndex int) []int{
+	var maxIndex = len(list)
+	var length = len(quen)
+	if  length == 0 || length==len(list){
+		return quen
 	}
-
-	for{
-		if len(tempMap) == 0 {
+	var index int
+	for index=startIndex; index<maxIndex; index++ {
+		if res := isRightPos(quen, index, list); res {
+			quen = append(quen, index)
 			break
 		}
-		for index=minHeight; index<=maxHeight;index++ {
-			if value,ok := tempMap[index]; ok {
-				numBefore := 0
-				for mkey,mvalue := range studentBefore {
-					if mkey >= value[0] {
-						numBefore += mvalue
-					}
-				}
-				if numBefore == value[1] {
-					studentBefore[value[0]]++
-					result = append(result, value)
-					delete(tempMap,value[0])
-					break
-				}
-			}
+	}
+
+	if length != len(quen) {
+		quen = findResult(quen, list, 0)
+	}else{
+		//回滚
+		startIndex = quen[length-1]+1
+		quen = quen[0:length-1]
+		quen = findResult(quen, list, startIndex)
+	}
+	return quen
+}
+
+func isItemInSlice(arr []int, item int) bool{
+	var ret = false
+	if ( len(arr) == 0 ) {
+		return ret
+	}
+
+	for _,value := range arr {
+		if value == item {
+			ret = true
+			break
 		}
 	}
 
-	return  result
+	return ret
 }
+
+func isRightPos(arr []int, curIndex int, list StundetList) bool{
+	if res := isItemInSlice(arr, curIndex) ;res {
+		return false
+	}
+
+	var count = 0
+	for _,value := range arr {
+		if list[value].height >= list[curIndex].height {
+			count ++
+		}
+	}
+
+	if count == list[curIndex].numbefore {
+		return  true
+	}
+
+	return  false
+}
+
+
 
 
 
